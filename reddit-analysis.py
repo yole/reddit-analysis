@@ -1,3 +1,5 @@
+import time
+
 from convokit import Corpus, download
 from langdetect import detect, LangDetectException
 from collections import defaultdict, Counter
@@ -7,16 +9,30 @@ def analyze_subreddit(subreddit, language, variants):
 
     speakers = defaultdict(lambda: {'en': False, language: False})
     token_count = Counter()
+    utterance_count = Counter()
     exclude_id = set()
 
     corpus = Corpus(filename=download('subreddit-' + subreddit))
-    for utt in corpus.iter_utterances():
+    all_utterances = corpus.utterances.values()
+    print(f"Processing {len(all_utterances)} utterances")
+    start_time = time.time()
+    processed_count = 0
+    for utt in all_utterances:
+        processed_count += 1
+        if processed_count % (len(all_utterances) // 100) == 0:
+            current_time = time.time()
+            print(f"{processed_count / (len(all_utterances) // 100)}% processed; elapsed time {round(current_time - start_time, 2)} sec; EN {utterance_count['en']}; local {utterance_count[language]}")
+
+        if utt.text == '[removed]' or utt.text == '[deleted]':
+            continue
+
         speaker_id = utt.speaker.id
         speaker = speakers[speaker_id]
 
         try:
             lang = detect(utt.text)
             speaker[lang] = True
+            utterance_count[lang] += 1
             if lang != 'en':
                 exclude_id.add(utt.id)
         except LangDetectException:

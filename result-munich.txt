@@ -1,0 +1,4 @@
+Speaker counts: mono-native 266, mono-EN 5309, bilingual 970
+Mono-EN tokens: 1001133, bilingual tokens: 934380
+try to: mono-EN 320, bilingual 307
+try and: mono-EN 118, bilingual 66
