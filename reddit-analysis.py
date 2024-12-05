@@ -1,8 +1,11 @@
 import time
 
 from convokit import Corpus, download
-from langdetect import detect, LangDetectException
+from lingua import Language, LanguageDetectorBuilder
 from collections import defaultdict, Counter
+
+from lingua.lingua import IsoCode639_1
+
 
 def extract_context(utt, v):
     pos = utt.text.find(v)
@@ -12,6 +15,8 @@ def extract_context(utt, v):
 
 def analyze_subreddit(subreddit, language, variants):
     utterances = [[] for v in variants]
+    lg = Language.from_iso_code_639_1(getattr(IsoCode639_1, language.upper()))
+    detector = LanguageDetectorBuilder.from_languages(Language.ENGLISH, lg).build()
 
     speakers = defaultdict(lambda: {'en': False, language: False})
     token_count = Counter()
@@ -25,24 +30,26 @@ def analyze_subreddit(subreddit, language, variants):
     processed_count = 0
     for utt in all_utterances:
         processed_count += 1
-        if processed_count % (len(all_utterances) // 100) == 0:
+        if processed_count % (len(all_utterances) // 20) == 0:
             current_time = time.time()
-            print(f"{processed_count / (len(all_utterances) // 100)}% processed; elapsed time {round(current_time - start_time, 2)} sec; EN {utterance_count['en']}; local {utterance_count[language]}")
+            percent = round(processed_count / (len(all_utterances) // 100), 1)
+            print(f"{percent}% processed; elapsed time {round(current_time - start_time, 2)} sec; EN {utterance_count['en']}; local {utterance_count[language]}")
 
-        if utt.text == '[removed]' or utt.text == '[deleted]':
+        if len(utt.text) < len(variants[0]) or utt.text == '[removed]' or utt.text == '[deleted]':
             continue
 
         speaker_id = utt.speaker.id
         speaker = speakers[speaker_id]
 
-        try:
-            lang = detect(utt.text)
-            speaker[lang] = True
-            utterance_count[lang] += 1
-            if lang != 'en':
-                exclude_id.add(utt.id)
-        except LangDetectException:
-            pass
+        lg = detector.detect_language_of(utt.text)
+        if not lg:
+            print("No language for " + utt.text)
+            continue
+        lang = lg.iso_code_639_1.name.lower()
+        speaker[lang] = True
+        utterance_count[lang] += 1
+        if lang != 'en':
+            exclude_id.add(utt.id)
 
         for i, v in enumerate(variants):
             pos = utt.text.find(v)
