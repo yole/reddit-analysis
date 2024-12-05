@@ -11,7 +11,7 @@ def extract_context(utt, v):
     pos = utt.text.find(v)
     start = max(pos-20, 0)
     end = min(pos+len(v)+20, len(utt.text))
-    return utt.text[start:end]
+    return utt.text[start:end].replace('\n', ' ')
 
 def analyze_subreddit(subreddit, language, variants):
     utterances = [[] for v in variants]
