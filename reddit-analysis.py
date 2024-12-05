@@ -4,6 +4,12 @@ from convokit import Corpus, download
 from langdetect import detect, LangDetectException
 from collections import defaultdict, Counter
 
+def extract_context(utt, v):
+    pos = utt.text.find(v)
+    start = max(pos-20, 0)
+    end = min(pos+len(v)+20, len(utt.text))
+    return utt.text[start:end]
+
 def analyze_subreddit(subreddit, language, variants):
     utterances = [[] for v in variants]
 
@@ -39,7 +45,9 @@ def analyze_subreddit(subreddit, language, variants):
             pass
 
         for i, v in enumerate(variants):
-            if v in utt.text:
+            pos = utt.text.find(v)
+            if pos >= 0 and (pos == 0 or not utt.text[pos-1].isalpha()) and \
+                    (pos + len(v) == len(utt.text) or not utt.text[pos+len(v)].isalpha()):
                 utterances[i].append(utt)
 
     en_only = [s for _, s in speakers.items() if s['en'] and not s[language]]
@@ -61,12 +69,10 @@ def analyze_subreddit(subreddit, language, variants):
         utterances_en = len([utt for utt in utterances[i] if not speakers[utt.speaker.id][language]])
         utterances_bi = len([utt for utt in utterances[i] if speakers[utt.speaker.id][language]])
 
-        print(f"{v}: mono-EN {utterances_en}, bilingual {utterances_bi}")
-    #
-    # print("Utterance A: " + str(len(a_utterances)) + "; utterance B: " + str(len(b_utterances)))
-    # for a_utterance in a_utterances:
-    #     print(context(a_utterance, ))
-    # for b_utterance in b_utterances:
-    #     print(b_utterance.text)
+        print(f"{v}: mono-EN {utterances_en} (pmw {utterances_en * 1_000_000 / token_count['en']}), "
+              f"bilingual {utterances_bi} (pmw {utterances_bi * 1_000_000 / token_count['bi']})")
 
-analyze_subreddit('Amsterdam', 'nl', ['try to', 'try and'])
+        for utt in utterances[i]:
+            print(extract_context(utt, v))
+
+analyze_subreddit('Munich', 'de', ['try to', 'try and'])
