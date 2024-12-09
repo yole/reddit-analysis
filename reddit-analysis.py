@@ -15,8 +15,9 @@ def extract_context(utt, v):
 
 def analyze_subreddit(subreddit, language, variants):
     utterances = [[] for v in variants]
-    lg = Language.from_iso_code_639_1(getattr(IsoCode639_1, language.upper()))
-    detector = LanguageDetectorBuilder.from_languages(Language.ENGLISH, lg).build()
+    if language:
+        lg = Language.from_iso_code_639_1(getattr(IsoCode639_1, language.upper()))
+        detector = LanguageDetectorBuilder.from_languages(Language.ENGLISH, lg).build()
 
     speakers = defaultdict(lambda: {'en': False, language: False})
     token_count = Counter()
@@ -41,11 +42,14 @@ def analyze_subreddit(subreddit, language, variants):
         speaker_id = utt.speaker.id
         speaker = speakers[speaker_id]
 
-        lg = detector.detect_language_of(utt.text)
-        if not lg:
-            print("No language for " + utt.text)
-            continue
-        lang = lg.iso_code_639_1.name.lower()
+        if language:
+            lg = detector.detect_language_of(utt.text)
+            if not lg:
+                print("No language for " + utt.text)
+                continue
+            lang = lg.iso_code_639_1.name.lower()
+        else:
+            lang = 'en'
         speaker[lang] = True
         utterance_count[lang] += 1
         if lang != 'en':
@@ -64,7 +68,7 @@ def analyze_subreddit(subreddit, language, variants):
     for utt in corpus.iter_utterances():
         if utt.id in exclude_id: continue
         tokens = len(utt.text.split(' '))
-        if speakers[utt.speaker.id][language]:
+        if language and speakers[utt.speaker.id][language]:
             token_count['bi'] += tokens
         else:
             token_count['en'] += tokens
@@ -76,10 +80,13 @@ def analyze_subreddit(subreddit, language, variants):
         utterances_en = len([utt for utt in utterances[i] if not speakers[utt.speaker.id][language]])
         utterances_bi = len([utt for utt in utterances[i] if speakers[utt.speaker.id][language]])
 
-        print(f"{v}: mono-EN {utterances_en} (pmw {utterances_en * 1_000_000 / token_count['en']}), "
-              f"bilingual {utterances_bi} (pmw {utterances_bi * 1_000_000 / token_count['bi']})")
+        print(f"{v}: mono-EN {utterances_en} (pmw {utterances_en * 1_000_000 / token_count['en']})")
+        if language:
+              print(f"bilingual {utterances_bi} (pmw {utterances_bi * 1_000_000 / token_count['bi']})")
 
-        for utt in utterances[i]:
-            print(extract_context(utt, v))
+        # for utt in utterances[i]:
+        #     print(extract_context(utt, v))
 
-analyze_subreddit('Munich', 'de', ['try to', 'try and'])
+# analyze_subreddit('Netherlands', 'nl', ["didn't use to", "didn't used to", "usedn't to"])
+analyze_subreddit('paris', 'fr', ["try to", "try and"])
+# analyze_subreddit('SriLanka', 'si', ["try to", "try and"])
